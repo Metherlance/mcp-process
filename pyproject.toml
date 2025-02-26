@@ -1,0 +1,47 @@
+[project]
+name = "mcp-process"
+version = "0.1.0"
+description = "Execute static commands (ls pwd cd cat echo grep git ...) and interactive programs (vi/vim/nano top/htop less tmux mc ...) in WSL"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    {name = "mcp-process Contributors", email = "your.email@example.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "pywinpty>=2.0.0; platform_system == \"Windows\"",
+    "mcp>=1.0.0",
+    "ptyprocess>=0.7.0; platform_system != \"Windows\"",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Metherlance/mcp-process"
+"Bug Tracker" = "https://github.com/Metherlance/mcp-process/issues"
+
+[project.scripts]
+mcp-process = "mcp_process:cli_entry_point"
+
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "isort>=5.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+
