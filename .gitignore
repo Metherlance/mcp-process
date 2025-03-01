@@ -1,7 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.class
 *.so
 .Python
 build/
@@ -24,6 +24,7 @@ wheels/
 venv/
 env/
 ENV/
+.venv/
 
 # IDE
 .idea/
@@ -42,3 +43,9 @@ htmlcov/
 # Temporary files
 *.bak
 *.tmp
+tmp/
+
+# TortoiseGit
+tortoisegit.data
+tortoisegit.index
+tgitchangelist

@@ -1,6 +1,7 @@
 # MCP-PROCESS
 
 An MCP server (Model-Client-Protocol) allowing Claude to access a shell. This integration enables Claude to execute commands and interact with your file system via the command line.
+
 ## Warning / Disclaimer
 
 ⚠️ **CAUTION** ⚠️
@@ -18,9 +19,8 @@ It is strongly recommended to use it only in an isolated or controlled environme
 ## Features
 
 - Execution of static commands
-- Support for interactive mode for applications like vim, nano, htop, etc.
 - Validation of potentially dangerous commands
-- Flexible configuration of terminal dimensions and filtering of ANSI escape sequences
+- Flexible configuration of command filtering and timeout
 
 ## Prerequisites
 
@@ -31,12 +31,18 @@ It is strongly recommended to use it only in an isolated or controlled environme
 
 ## Installation
 
+1. Clone the repository:
+```bash
+git clone https://github.com/Metherlance/mcp-process.git
+cd mcp-process
+```
+
+2. Install the package:
 ```bash
 pip install .
 ```
 
 Or for development installation:
-
 ```bash
 pip install -e ".[dev]"
 ```
@@ -57,86 +63,64 @@ Add the following section:
     "command": "mcp-process",
     "args": [
       "--process-path-args", "wsl.exe --cd /mnt/c/Users/YourName",
-      "--terminal-width", "80",
-      "--terminal-height", "24",
       "--filter-patterns", "\\x1b\\[[0-9;]*m",
       "--exec-name", "exec",
-      "--exec-description", "Executes a static command (ls pwd cat echo ps mkdir cp grep find git sed ...) and returns its result",
-      "--terminal-name", "terminal",
-      "--terminal-description", "Creates a persistent shell terminal session if it doesn't exist and sends input to the shell (applications: vi top htop nano less python ssh mysql ftp ncdu ...) (Enter: \\r or \\n), asynchronous return (the screen may still refresh after the return)",
-      "--terminate-description", "Terminates the current interactive process/terminal if it exists",
-      "--terminate-label", "terminal_terminate",
+      "--exec-description", "Exécute une commande statique (ls pwd cat tree ps mkdir cp grep find git sed echo rg ...) et retourne son résultat",
+      "--exec-timeout", "60"
     ]
   },
   "psql": {
-		"command": "mcp-process",
-		"args": [
-			"--process-path-args", "psql.exe postgresql://postgres:password@localhost:5432/db",
-			"--exec-name", "psql",
-			"--exec-description", "Exécute une commande statique sql et retourne son résultat ex: -c \"SELECT * FROM table;\" ",
-			"--terminal-name", ""
-			"--terminate-name", ""
-		]
-   }
+    "command": "mcp-process",
+    "args": [
+      "--process-path-args", "psql.exe postgresql://postgres:password@localhost:5432/db",
+      "--exec-name", "psql",
+      "--exec-description", "Exécute une commande statique sql et retourne son résultat ex: -c \"SELECT * FROM table;\" ",
+      "--exec-timeout", "120"
+    ]
+  }
 }
 ```
 
 
-## Available Options
-
-You can customize the behavior of the MCP server with the following options:
-
 | Option | Description | Default Value |
 |--------|-------------|-------------------|
 | `--process-path-args` | Path to shell process including initial arguments (e.g., `wsl.exe --cd [dir]`) | `wsl.exe --cd [current_dir]` |
-| `--filter-patterns` | Regex patterns to filter | `["\\x1b\\[K"]` |
+| `--forbidden-words` | List of words not allowed in commands | `[several_default_items]` |
+| `--filter-patterns` | Regex patterns to filter | `["\x07", "\x1b\[25l"]` |
 | `--exec-name` | Custom name for the exec tool | `exec` |
 | `--exec-description` | Custom description for the exec tool | (see default in args) |
 | `--exec-timeout` | Command timeout (in sec.) | 60 |
-| `--terminal-name` | Custom name for the terminal tool | `terminal` |
-| `--terminal-description` | Custom description for the terminal tool | (see default in args) |
-| `--terminal-wait` | Wait delay before reading (in sec.) | 0.2 |
-| `--terminal-width` | Terminal width | 80 |
-| `--terminal-height` | Terminal height | 24 |
-| `--terminate-label` | Custom label for the terminate tool | `session_terminate` |
-| `--terminate-description` | Custom description for the terminate tool | (see default in args) |
 
 ### Filter Examples
 
 To filter ANSI color sequences:
 ```
---filter-patterns "\\x1b\\[[0-9;]*m"
+--filter-patterns "\x1b\[[0-9;]*m"
 ```
 
 To filter terminal titles:
 ```
---filter-patterns "\\x1b\\]0;.*?\\x07"
+--filter-patterns "\x1b\]0;.*?\x07"
 ```
 
 ## Usage
 
 Once installed and configured, you can ask Claude to execute WSL commands as follows:
 
-1. Static commands:
-   ```
-   Can you run the command "ls -la" in WSL?
-   ```
-
-2. Interactive commands:
-   ```
-   Can you open nano in WSL and create a simple file?
-   ```
+```
+Can you run the command "ls -la" in WSL?
+```
 
 ## Development
 
 To contribute to development:
 
 1. Clone the repository
-2. Install development dependencies :
+2. Install development dependencies:
    ```bash
    pip install -e ".[dev]"
    ```
-3. Run tests (see README_tests.md for more details) :
+3. Run tests:
    ```bash
    pytest
    ```
