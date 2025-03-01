@@ -1,3 +1,4 @@
+import select
 import os
 import sys
 import json
@@ -272,19 +273,28 @@ async def handle_call_tool(
                 )
                 
                 # Wait for the shell to be ready
-                time.sleep(1)
+                #time.sleep(1)
                 # Read initial prompt
-                initial_output = interactive_process.read(4096)
+                #initial_output = interactive_process.read(4096)
+                rlist, _, _ = select.select([interactive_process.fd], [], [], 1)
+                if rlist:
+                    initial_output = interactive_process.read(16384)
             
             # Send the command
             interactive_process.write(command)
             
             # Wait for the command to be processed
-            time.sleep(wait)
+            #time.sleep(wait)
             
             # Read the output
             try:
-                output = interactive_process.read(16384)
+                # Use select to implement a timeout for read
+                rlist, _, _ = select.select([interactive_process.fd], [], [], wait)  # timeout
+                if rlist:
+                    output = interactive_process.read(16384)
+                else:
+                    output = "Reading timed out after "+wait+"s"
+                
                 if isinstance(output, bytes):
                     output = output.decode('utf-8', errors='replace')
                 

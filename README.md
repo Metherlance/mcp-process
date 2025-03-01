@@ -98,7 +98,7 @@ You can customize the behavior of the MCP server with the following options:
 | `--terminal-wait` | Wait delay before reading (in sec.) | 0.2 |
 | `--terminal-width` | Terminal width | 80 |
 | `--terminal-height` | Terminal height | 24 |
-| `--terminate-label` | Custom label for the terminate tool | `session_terminate` |
+| `--terminate-label` | Custom label for the terminate tool | `terminal_terminate` |
 | `--terminate-description` | Custom description for the terminate tool | (see default in args) |
 
 ### Filter Examples
