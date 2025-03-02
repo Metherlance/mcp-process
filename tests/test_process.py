@@ -85,7 +85,7 @@ async def test_exec_tool_echo():
 async def test_exec_tool_with_file_operations():
     """Tests file operations."""
     # Create a test file
-    test_filename = f"test_file_{int(time.time())}.txt"
+    test_filename = f"tmp/test_file_{int(time.time())}.txt"
     test_content = f"Test content generated at {time.time()}"
     
     try:
@@ -101,7 +101,7 @@ async def test_exec_tool_with_file_operations():
         
     finally:
         # Cleanup: remove the test file
-        await server_process.handle_call_tool("exec", {"input": f'rm -f ~/{test_filename}'})
+        await server_process.handle_call_tool("exec", {"input": f'rm -f {test_filename}'})
 
 @pytest.mark.asyncio
 @requires_shell
@@ -174,7 +174,7 @@ async def test_interactive_session():
         
         assert isinstance(result, list)
         assert len(result) > 0
-        assert "alive" in result[0].text
+        assert "pid" in result[0].text
         
         # Get the current state of the interactive process
         assert server_process.interactive_process is not None

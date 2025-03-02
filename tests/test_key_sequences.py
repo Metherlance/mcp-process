@@ -48,7 +48,7 @@ async def test_control_key_sequences(cleanup_session):
         # Verify session started
         assert isinstance(start_result, list)
         assert len(start_result) > 0
-        assert "alive" in start_result[0].text
+        assert "pid" in start_result[0].text
         
         # Wait for showkey to be ready
         await asyncio.sleep(1)
@@ -138,7 +138,7 @@ async def test_editor_with_control_keys(cleanup_session):
         # Check that the session started
         assert isinstance(start_result, list)
         assert len(start_result) > 0
-        assert "alive" in start_result[0].text
+        assert "pid" in start_result[0].text
         
         # Wait for nano to be ready
         await asyncio.sleep(1)

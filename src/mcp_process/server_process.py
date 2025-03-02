@@ -276,7 +276,7 @@ async def handle_call_tool(
                 #time.sleep(1)
                 # Read initial prompt
                 #initial_output = interactive_process.read(4096)
-                rlist, _, _ = select.select([interactive_process.fd], [], [], 1)
+                rlist, _, _ = select.select([interactive_process.fd], [], [], 2)
                 if rlist:
                     initial_output = interactive_process.read(16384)
             
@@ -284,7 +284,7 @@ async def handle_call_tool(
             interactive_process.write(command)
             
             # Wait for the command to be processed
-            #time.sleep(wait)
+            time.sleep(0.1)
             
             # Read the output
             try:
@@ -310,7 +310,7 @@ async def handle_call_tool(
             if interactive_process.isalive():
                 return [types.TextContent(
                     type="text",
-                    text=f"PID: {interactive_process.pid} alive.\n"
+                    text=f"pid: {interactive_process.pid}\n"
                          f"Output:\n{output}"
                 )]
             else:
@@ -319,7 +319,7 @@ async def handle_call_tool(
                 interactive_process = None
                 return [types.TextContent(
                     type="text",
-                    text=f"Session terminated (code: {exitcode}).\n"
+                    text=f"terminal terminated, code: {exitcode}\n"
                          f"Output:\n{output}"
                 )]
                 
