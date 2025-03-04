@@ -8,6 +8,9 @@ import argparse
 import time
 import re
 from typing import Optional, List, Dict, Any, Union, Pattern, Tuple
+import pyte
+from .clean_control_chars import fix_control_at_end
+
 
 # Configure default encoding
 os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -44,7 +47,8 @@ parser.add_argument("--forbidden-words", type=str, nargs="+",
 
 
 parser.add_argument("--filter-patterns", type=str, nargs="+",
-                    help="Patterns to filter from session outputs (regular expressions)", default=["\\x1b\[K"])
+                    help="Patterns to filter from session outputs (regular expressions)", 
+                    default=["\\x07", "\\x1b\\[25l"])  # "\\x1b\\[K", new line, bell, hide cursor 
 parser.add_argument("--exec-name", type=str, help="Custom name for the exec tool", default="exec")
 parser.add_argument("--exec-description", type=str,
                    help="Custom description for the exec tool",
@@ -55,9 +59,10 @@ parser.add_argument("--exec-timeout", type=int,
 parser.add_argument("--terminal-name", type=str, help="Custom name for the terminal tool", default="terminal")
 parser.add_argument("--terminal-description", type=str,
                    help="Custom description for the terminal tool",
-                   default="Create a persistent shell terminal session if it doesn't exist and send input to the shell (applications: vi top htop nano less python ssh mysql ftp ncdu ...) (for nano -> Enter: \\r), asynchronous return (the screen may still refresh after the return)")
+                   default="Create a persistent shell terminal session if it doesn't exist and send input to the shell (applications: vi top htop nano less python ssh mysql ftp ncdu ...) (\\ are forbidden for control key), asynchronous return (the screen may still refresh after the return) '▌' for cursor position in screen")
 parser.add_argument("--terminal-wait", type=float,
                     help="Wait delay to get result (terminal async) (seconds)", default=0.2)
+parser.add_argument("--no-fix-control", action="store_true", help="Do not fix control characters at end in input like \\n -> \n, \\r -> \r", default=False)
 parser.add_argument("--terminal-width", type=int,
                     help="Terminal width for interactive sessions", default=80)
 parser.add_argument("--terminal-height", type=int,
@@ -89,6 +94,7 @@ DEFAULT_CONFIG = {
 
     "terminate_description": args.terminate_description,
     "terminate_name": args.terminate_label,
+    "no_fix_control": args.no_fix_control,
 }
 
 # Singleton for the interactive process
@@ -148,15 +154,18 @@ async def handle_list_tools() -> list[types.Tool]:
                     "properties": {
                         "input": {
                             "type": "string",
-                            "description": "Input to send to the running interactive process, if it is command to execute add \\n . Exemple of keyboard: Left arrow: \\x1b[D  Escape: \\x1b Ctrl-C: \\x03 Home: \\x1b[H End: \\x1b[F or \\x1bOF Backspace: \\x7f Delete: \\x1b[3~ Tab: \\x09 Enter: \\n or \\r (for nano) Page Down: \\x1b[6~ "
-                        },
+                            "description": "Input to send to the running interactive process. All keys are in hexadecimal format: Enter: \x0A (if doesnt work use \x0D)  Escape: \x1b"
+                        }, 
+                        # "control": {
+                        #     "type": "string",
+                        #     "description": "control key (only 1) to send to the running interactive process (will be send after input). Use \n for run a input command. Exemple of keyboard: Left arrow: \x1b[D  Escape: \x1b Ctrl-C: \x03 Home: \x1b[H End: \x1b[F or \x1bOF Backspace: \x7f Delete: \x1b[3~ Tab: \x09 Enter: \x0A (if doesnt work use \x0D) Page Down: \x1b[6~"
+                        # },
                         "wait": {
                             "type": "number",
                             "description": "Wait delay to get response (seconds, optional)",
                             "default": config["terminal_wait"]
                         }
-                    },
-                    "required": ["input"]
+                    },                    
                 }
             )
         )
@@ -184,6 +193,8 @@ async def handle_call_tool(
 ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
     """Handles tool executions."""
     global interactive_process
+    global stream
+    global screen
     
     if name == config["exec_name"]:
         if not arguments:
@@ -237,21 +248,23 @@ async def handle_call_tool(
             )]
     
     elif name == config["terminal_name"] and PTY_AVAILABLE:
+        # Screen for terminal emulation
         if not arguments:
             raise ValueError("Missing arguments")
             
         command = arguments.get("input")
+        # control = arguments.get("control")
         wait = float(arguments.get("wait", config["terminal_wait"]))
         
-        if not command:
-            return [types.TextContent(
-                type="text", 
-                text="Error: Command not specified."
-            )]
+        # if not command:
+        #     return [types.TextContent(
+        #         type="text", 
+        #         text="Error: Command not specified."
+        #     )]
         
         # Ensure the command ends with a newline
-        if not command.endswith('\n'):
-            command += '\n'
+        # if not command.endswith('\n'):
+        #     command += '\n'
         
         # Check if the command requires validation
         if requires_validation(command):
@@ -272,36 +285,71 @@ async def handle_call_tool(
                     dimensions=dimensions
                 )
                 
+                screen = pyte.Screen(config["terminal_dimensions"][1], config["terminal_dimensions"][0])
+                stream = pyte.Stream(screen)
+
                 # Wait for the shell to be ready
-                #time.sleep(1)
+                time.sleep(1+wait)
                 # Read initial prompt
                 #initial_output = interactive_process.read(4096)
-                rlist, _, _ = select.select([interactive_process.fd], [], [], 2)
+                rlist, _, _ = select.select([interactive_process.fd], [], [], 1)
                 if rlist:
                     initial_output = interactive_process.read(16384)
+                    stream.feed(initial_output)
             
             # Send the command
-            interactive_process.write(command)
+            if command is not None:
+                # Process control characters if fix is enabled
+                if not config["no_fix_control"]:
+                    command = fix_control_at_end(command)
+                interactive_process.write(command)
             
+            # if control is not None:
+            #     control = control.replace("\\n", "\n").replace("\\r", "\r").replace("\\r", "\r").replace("\\", "")
+            #     if control == "\\n":
+            #     # interactive_process.sendcontrol(control)
+            #         interactive_process.sendcontrol('j')
+                        
             # Wait for the command to be processed
-            time.sleep(0.1)
+            time.sleep(wait)
             
             # Read the output
             try:
                 # Use select to implement a timeout for read
-                rlist, _, _ = select.select([interactive_process.fd], [], [], wait)  # timeout
+                rlist, _, _ = select.select([interactive_process.fd], [], [], .1)  # timeout
                 if rlist:
                     output = interactive_process.read(16384)
+                    stream.feed(output)
                 else:
                     output = "Reading timed out after "+wait+"s"
                 
                 if isinstance(output, bytes):
                     output = output.decode('utf-8', errors='replace')
                 
+                # Update screen with output
+                stream = pyte.Stream(screen)
+                if isinstance(output, str):
+                    stream.feed(output)
+                
+                screen_lines = []
+                for y, line in enumerate(screen.display):
+                    if y == screen.cursor.y:
+                        # Cette ligne contient le curseur                    
+                        # Insérer le curseur dans la ligne existante
+                        new_line = line[:screen.cursor.x] + "▌" + line[screen.cursor.x:]
+                        screen_lines.append(new_line)
+                    else:
+                        # Ligne sans curseur
+                        screen_lines.append(line)
+
+                output = "\n".join(line.rstrip() for line in screen_lines)
+                #cursor_pos = (screen.cursor.x, screen.cursor.y)
+
                 # Apply filters if defined
-                if config["compiled_filters"]:
-                    for pattern in config["compiled_filters"]:
-                        output = pattern.sub('', output)
+                # if config["compiled_filters"]:
+                #     for pattern in config["compiled_filters"]:
+                #         output = pattern.sub('', output)
+                
                         
             except Exception as e:
                 output = f"Error reading output: {str(e)}"
@@ -311,7 +359,7 @@ async def handle_call_tool(
                 return [types.TextContent(
                     type="text",
                     text=f"pid: {interactive_process.pid}\n"
-                         f"Output:\n{output}"
+                         f"screen:\n{output}"
                 )]
             else:
                 # The process has terminated
@@ -320,7 +368,7 @@ async def handle_call_tool(
                 return [types.TextContent(
                     type="text",
                     text=f"terminal terminated, code: {exitcode}\n"
-                         f"Output:\n{output}"
+                         f"screen:\n{output}"
                 )]
                 
         except Exception as e:
