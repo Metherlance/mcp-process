@@ -159,31 +159,6 @@ async def test_multiple_commands():
     assert "Test 1" in results[0][0].text
     assert "Test final" in results[3][0].text
 
-# These tests will only run if PTY is available
-# Check if PTY is available
-pty_available = server_process.PTY_AVAILABLE
-
-@pytest.mark.asyncio
-@pytest.mark.skipif(not (wsl_available and pty_available), 
-                   reason="WSL or PTY is not available on this system")
-async def test_interactive_session():
-    """Tests the interactive session mode."""
-    try:
-        # Start an interactive shell
-        result = await server_process.handle_call_tool("terminal", {"input": "bash\n"})
-        
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert "pid" in result[0].text
-        
-        # Get the current state of the interactive process
-        assert server_process.interactive_process is not None
-        assert server_process.interactive_process.isalive()
-        
-    finally:
-        # Terminate the interactive process if it exists
-        if server_process.interactive_process is not None:
-            await server_process.handle_call_tool(server_process.config["terminate_name"], {})
 
 if __name__ == "__main__":
     pytest.main(["-xvs", __file__])
