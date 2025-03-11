@@ -43,7 +43,7 @@ parser = argparse.ArgumentParser(description="MCP Server for process")
 parser.add_argument("--process-path-args", type=str, help="Path to process and immutable args", default="wsl.exe --cd " + os.getcwd())
 parser.add_argument("--forbidden-words", type=str, nargs="+", 
                     help="List of forbidden words in commands", 
-                    default=["rm -rf", "sudo", "shutdown", "reboot"])
+                    default=["rm -rf", "shutdown", "reboot"])
 
 
 parser.add_argument("--filter-patterns", type=str, nargs="+",
@@ -230,9 +230,9 @@ async def handle_call_tool(
             
             output = f"return code: {result.returncode}\n"
             if result.stdout:
-                output += f"STDOUT:\n{result.stdout.decode('utf-8', errors='replace')}\n"
+                output += f"STDOUT:\n{result.stdout.decode('utf-8', errors='replace').replace("\xa0", " ").replace("└", " ").replace("│", " ").replace("├", " ").replace("─", " ")}\n"
             if result.stderr:
-                output += f"STDERR:\n{result.stderr.decode('utf-8', errors='replace')}\n"
+                output += f"STDERR:\n{result.stderr.decode('utf-8', errors='replace').replace("\xa0", " ").replace("└", " ").replace("│", " ").replace("├", " ").replace("─", " ")}\n"
 
             return [types.TextContent(type="text", text=output)]
         
